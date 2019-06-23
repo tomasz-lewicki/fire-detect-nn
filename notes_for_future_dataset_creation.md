@@ -4,7 +4,11 @@
 ## 2. Classes to include:
 - flame
 - smoke
-- fire crew
+- person
   + firemen
-  + assets
+  + civilian
+- vehicle
+  + fire dept
+  + civilian
+  
 
