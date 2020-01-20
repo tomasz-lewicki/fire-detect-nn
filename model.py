@@ -3,11 +3,6 @@ import torchvision
 import torchvision.transforms as transforms
 import torchvision.models as models
 
-import torch
-import torchvision
-import torchvision.transforms as transforms
-import torchvision.models as models
-
 class Model(torch.nn.Module):
     def __init__(self, backbone='resnet50', pretrained=True):
         super(Model, self).__init__()
