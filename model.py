@@ -3,6 +3,8 @@ import torchvision
 import torchvision.transforms as transforms
 import torchvision.models as models
 
+import numpy as np
+
 class Model(torch.nn.Module):
     def __init__(self, backbone='resnet50', pretrained=True):
         super(Model, self).__init__()
@@ -45,22 +47,44 @@ class Model(torch.nn.Module):
 
         return x
 
-
-def load_dataset(folder_path, batch_size=16):
+def load_dataset(directory='~/fire_aerial2k_dataset/',
+                     val_frac = 0.1,
+                     batch_size = 16,
+                     random_seed = 4822):
+    
     tr = torchvision.transforms.Compose([torchvision.transforms.Resize((224,224)),
-                                    torchvision.transforms.ToTensor()])
+                                torchvision.transforms.ToTensor()])
+    
+    entire_dataset = torchvision.datasets.ImageFolder(root=directory,
+                                                      transform=tr)
 
-    train_dataset = torchvision.datasets.ImageFolder(root=folder_path,
-                                                    transform=tr)
+    n_all = len(entire_dataset)
+    n_valid = int(np.floor(val_frac * n_all))
+    indices = list(range(n_all))
+
+    np.random.seed(random_seed)
+    np.random.shuffle(indices)
+
+    train_idxs_list, test_idxs_list = indices[n_valid:], indices[:n_valid]
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset,
+        entire_dataset,
         batch_size=batch_size,
         num_workers=0,
-        shuffle=True
+        shuffle=False,
+        sampler=torch.utils.data.sampler.SubsetRandomSampler(train_idxs_list),
     )
-
-    return train_loader
+    
+    test_loader = torch.utils.data.DataLoader(
+        entire_dataset,
+        batch_size=batch_size,
+        num_workers=0,
+        shuffle=False,
+        sampler=torch.utils.data.sampler.SubsetRandomSampler(test_idxs_list),
+    )
+    
+    
+    return train_loader, test_loader
 
 def accuracy(pred, truth):
     agreeing = (pred.transpose(0,1)[0] >= 0.5).eq(truth >= 0.5)
