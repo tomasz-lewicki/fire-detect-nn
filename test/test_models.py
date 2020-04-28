@@ -1,7 +1,10 @@
 
-from model import Model
 import torch
 import unittest
+
+import sys
+sys.path.append('..')
+from firedetect.model import Model
 
 class TestModels(unittest.TestCase):
 
@@ -13,7 +16,6 @@ class TestModels(unittest.TestCase):
             model = Model(backbone=b)
             model = model.to(device)
             self.assertTrue(model(torch.ones(1,3,224,224).to(device)))
-
 
 if __name__ == '__main__':
     unittest.main()
