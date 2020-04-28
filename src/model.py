@@ -73,7 +73,7 @@ def load_dataset(directory='~/fire_aerial2k_dataset/',
     train_loader = torch.utils.data.DataLoader(
         entire_dataset,
         batch_size=batch_size,
-        num_workers=0,
+        num_workers=4,
         shuffle=False,
         sampler=torch.utils.data.sampler.SubsetRandomSampler(train_idxs_list),
     )
@@ -81,7 +81,7 @@ def load_dataset(directory='~/fire_aerial2k_dataset/',
     test_loader = torch.utils.data.DataLoader(
         entire_dataset,
         batch_size=batch_size,
-        num_workers=0,
+        num_workers=4,
         shuffle=False,
         sampler=torch.utils.data.sampler.SubsetRandomSampler(test_idxs_list),
     )
