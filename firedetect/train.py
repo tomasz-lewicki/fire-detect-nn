@@ -6,7 +6,12 @@ import numpy as np
 import torch
 import torchvision
 
-BATCH_SIZE = 64
+def accuracy_gpu(pred, truth):
+    agreeing = (pred.transpose(0,1)[0] >= 0.5).eq(truth >= 0.5)
+    acc = float(agreeing.sum())/agreeing.numel()
+    return acc
+
+BATCH_SIZE = 32
 EPOCHS = 10
 
 BACKBONES = [
@@ -20,8 +25,8 @@ BACKBONES = [
 
 dataset_paths = {
     "mine": "/home/013855803/fire_aerial2k_dataset/",
-    "dunnings": "/home/013855803/fire-dataset-dunnings/images-224x224/train",
-    "dunnings_test": "/home/013855803/fire-dataset-dunnings/images-224x224/test",
+    "dunnings": "/home/tomek/projects/fire-detect-nn/data/fire-dataset-dunnings/images-224x224/train",
+    "dunnings_test": "/home/tomek/projects/fire-detect-nn/data/fire-dataset-dunnings/images-224x224/test",
 }
 
 train_loader, valid_loader = load_dataset(
@@ -91,7 +96,7 @@ for epoch in range(EPOCHS):  # epochs
         loss.backward()
         optimizer.step()
 
-        acc = accuracy(outputs, labels)
+        acc = accuracy_gpu(outputs, labels).to('cpu')
         # print statistics
 
         running_loss.append(loss.item())
@@ -109,22 +114,25 @@ for epoch in range(EPOCHS):  # epochs
             history["train_samples"].append(epoch * len(train_loader) + i)
             history["train_acc"].append(np.mean(running_acc))
 
+        # del outputs, inputs, labels
+
     #########################################
     # on epoch end:
     if is_validating:
         valid_acc = []
         # epoch validation
         for i, data in enumerate(valid_loader):
+
             # get the inputs; data is a list of [inputs, labels]
             inputs = data[0].to(device)
             labels = data[1].to(device)
 
-            # could pehaps do:
-            # for param in m.parameters():
-            #     param.requires_grad = False
+            with torch.no_grad():
+                outputs = m(inputs)
 
-            outputs = m(inputs)
-            valid_acc.append(accuracy(outputs, labels))
+            acc = accuracy_gpu(outputs, labels).to('cpu')
+            valid_acc.append(acc)
+
         va = round(np.mean(valid_acc), 4)
         print(f"validation accuracy {va}")
         history["valid_acc"].append(va)
@@ -139,12 +147,12 @@ for epoch in range(EPOCHS):  # epochs
             inputs = data[0].to(device)
             labels = data[1].to(device)
 
-            # could pehaps do:
-            # for param in m.parameters():
-            #     param.requires_grad = False
+            with torch.no_grad():
+                outputs = m(inputs)
 
-            outputs = m(inputs)
-            test_acc.append(accuracy(outputs, labels))
+            acc = accuracy_gpu(outputs, labels).to('cpu')
+            test_acc.append(acc)
+            
         
         tst = np.mean(test_acc)
         print(f"test_accuracy {tst}")
