@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from model import Model, load_dataset, accuracy
+
 import numpy as np
 import torch
 import torchvision
 
+from model import Model
+from dataset import load_dataset
+
 def accuracy_gpu(pred, truth):
-    agreeing = (pred.transpose(0,1)[0] >= 0.5).eq(truth >= 0.5)
-    acc = float(agreeing.sum())/agreeing.numel()
-    return acc
+    agreeing = pred.eq(truth)
+    acc = agreeing.sum().float()/agreeing.numel()
+    return float(acc)
 
 BATCH_SIZE = 32
 EPOCHS = 10
@@ -37,13 +40,26 @@ tr = torchvision.transforms.Compose(
     [torchvision.transforms.Resize((224, 224)), torchvision.transforms.ToTensor()]
 )
 
-test_dataset = torchvision.datasets.ImageFolder(
-    root=dataset_paths["dunnings_test"], transform=tr
-)
+# test_dataset = torchvision.datasets.ImageFolder(
+#     root=dataset_paths["dunnings_test"], transform=tr
+# )
 
+
+# test_loader = torch.utils.data.DataLoader(
+#     test_dataset,
+#     batch_size=BATCH_SIZE,
+#     num_workers=4,
+#     shuffle=False)
+
+
+test_dataset = torchvision.datasets.ImageFolder(root=dataset_paths['dunnings_test'],
+                                                transform=tr)
 
 test_loader = torch.utils.data.DataLoader(
-    test_dataset, batch_size=BATCH_SIZE, num_workers=4, shuffle=False
+    test_dataset,
+    batch_size=16,
+    num_workers=4,
+    shuffle=True
 )
 
 print(f"Loaded {len(train_loader)} training batches with {len(train_loader) * BATCH_SIZE} samples")
@@ -56,7 +72,7 @@ print(f"Loaded {len(test_loader)} training batches with {len(test_loader) * BATC
 
 device = torch.device("cuda:0")
 is_validating = True
-is_testing = True
+is_testing = False
 
 history = {
     "train_samples": [],
@@ -81,6 +97,7 @@ for epoch in range(EPOCHS):  # epochs
     running_acc = []
 
     # epoch training
+    m.train()
     for i, data in enumerate(train_loader):
 
         # get the inputs; data is a list of [inputs, labels]
@@ -91,12 +108,13 @@ for epoch in range(EPOCHS):  # epochs
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        outputs = m(inputs)
-        loss = criterion(outputs[:, 0], labels.type_as(outputs[:, 0]))
+        scores = m(inputs)
+        loss = criterion(scores[:, 0], labels.type_as(scores[:, 0]))
         loss.backward()
         optimizer.step()
 
-        acc = accuracy_gpu(outputs, labels).to('cpu')
+        pred = (scores >= 0.5).squeeze()
+        acc = accuracy_gpu(pred, labels)
         # print statistics
 
         running_loss.append(loss.item())
@@ -118,9 +136,11 @@ for epoch in range(EPOCHS):  # epochs
 
     #########################################
     # on epoch end:
+    m.eval()
     if is_validating:
         valid_acc = []
         # epoch validation
+        
         for i, data in enumerate(valid_loader):
 
             # get the inputs; data is a list of [inputs, labels]
@@ -128,39 +148,41 @@ for epoch in range(EPOCHS):  # epochs
             labels = data[1].to(device)
 
             with torch.no_grad():
-                outputs = m(inputs)
-
-            acc = accuracy_gpu(outputs, labels).to('cpu')
+                scores = m(inputs).squeeze()
+                pred = scores > 0.5
+                acc = accuracy_gpu(pred, labels)
+            
             valid_acc.append(acc)
 
         va = round(np.mean(valid_acc), 4)
         print(f"validation accuracy {va}")
         history["valid_acc"].append(va)
     else:
-        va = "-1"
+        va = -1
 
     if is_testing:
         test_acc = []
         # epoch validation
-        for i, data in enumerate(test_loader):
-            # get the inputs; data is a list of [inputs, labels]
-            inputs = data[0].to(device)
-            labels = data[1].to(device)
 
-            with torch.no_grad():
-                outputs = m(inputs)
-
-            acc = accuracy_gpu(outputs, labels).to('cpu')
-            test_acc.append(acc)
-            
-        
+        with torch.no_grad():
+            for i, data in enumerate(test_loader):
+                # data has list entries: [inputs, labels]
+                inputs = data[0].to(device)
+                labels = data[1].to(device)
+                
+                scores = m(inputs).squeeze()
+                pred = scores > 0.5
+                
+                acc = accuracy_gpu(pred, labels)
+                test_acc.append(acc)
+    
         tst = np.mean(test_acc)
         print(f"test_accuracy {tst}")
         history["test_acc"].append(tst)
     else:
-        tst = "-1"
+        tst = -1
 
-    fname = f"weights/{bbone}-epoch-{epoch}-valid_acc={va}-test_acc={tst:.2f}.pt"
+    fname = f"weights/{bbone}-epoch-{epoch}-valid_acc={va:.2f}-test_acc={tst:.2f}.pt"
     torch.save(m, fname)
     print(f"Saved {fname}")
 
