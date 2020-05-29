@@ -1,9 +1,5 @@
 import torch
-import torchvision
-import torchvision.transforms as transforms
 import torchvision.models as models
-
-import numpy as np
 
 class Model(torch.nn.Module):
     def __init__(self, backbone='resnet50', pretrained=True):
