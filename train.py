@@ -27,13 +27,13 @@ BACKBONES = [
 ]
 
 dataset_paths = {
-    "mine": "/home/013855803/fire_aerial2k_dataset/",
-    "dunnings": "/home/tomek/projects/fire-detect-nn/data/fire-dataset-dunnings/images-224x224/train",
-    "dunnings_test": "/home/tomek/projects/fire-detect-nn/data/fire-dataset-dunnings/images-224x224/test",
+    "mine": "~/pro/fire_aerial2k_dataset/",
+    "dunnings_train": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/train",
+    "dunnings_test": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test",
 }
 
 train_loader, valid_loader = load_dataset(
-    dataset_paths["dunnings"], batch_size=BATCH_SIZE
+    dataset_paths["mine"], batch_size=BATCH_SIZE
 )
 
 tr = torchvision.transforms.Compose(
@@ -81,6 +81,7 @@ history = {
     "test_acc": [],
     "loss": [],
 }
+
 bbone = 'resnet50'
 m = Model(backbone=bbone)
 m = m.to(device)
