@@ -1,21 +1,18 @@
-#!/usr/bin/env python
-# coding: utf-8
-
+import json
 
 import numpy as np
 import torch
 import torchvision
 
-from model import Model
-from dataset import load_dataset
-
-def accuracy_gpu(pred, truth):
-    agreeing = pred.eq(truth)
-    acc = agreeing.sum().float()/agreeing.numel()
-    return float(acc)
+from datasets.afd import make_afd_loaders
+from datasets.dunnings import make_dunnings_test_loader, make_dunnings_train_loader
+from models import FireClassifier
+from utils import accuracy_gpu
 
 BATCH_SIZE = 32
-EPOCHS = 10
+EPOCHS = 30
+PRINT_EVERY = 5  # batches
+EVAL_EVERY = 50
 
 BACKBONES = [
     "resnet18",
@@ -30,65 +27,45 @@ dataset_paths = {
     "mine": "~/pro/fire_aerial2k_dataset/",
     "dunnings_train": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/train",
     "dunnings_test": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test",
+    "furg_test": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test_furg/",
+    "combo": "/home/tomek/pro/3datasets/",
 }
 
-train_loader, valid_loader = load_dataset(
-    dataset_paths["mine"], batch_size=BATCH_SIZE
-)
+train, val = make_afd_loaders(dataset_paths["combo"], batch_size=BATCH_SIZE)
 
-tr = torchvision.transforms.Compose(
-    [torchvision.transforms.Resize((224, 224)), torchvision.transforms.ToTensor()]
-)
-
-# test_dataset = torchvision.datasets.ImageFolder(
-#     root=dataset_paths["dunnings_test"], transform=tr
+# dunnings_train = make_dunnings_train_loader(
+#     dataset_paths["dunnings_train"], batch_size=BATCH_SIZE
 # )
 
+test = make_dunnings_test_loader(dataset_paths["dunnings_test"], batch_size=BATCH_SIZE)
 
-# test_loader = torch.utils.data.DataLoader(
-#     test_dataset,
-#     batch_size=BATCH_SIZE,
-#     num_workers=4,
-#     shuffle=False)
-
-
-test_dataset = torchvision.datasets.ImageFolder(root=dataset_paths['dunnings_test'],
-                                                transform=tr)
-
-test_loader = torch.utils.data.DataLoader(
-    test_dataset,
-    batch_size=16,
-    num_workers=4,
-    shuffle=True
-)
-
-print(f"Loaded {len(train_loader)} training batches with {len(train_loader) * BATCH_SIZE} samples")
-print(f"Loaded {len(valid_loader)} validation batches with {len(valid_loader) * BATCH_SIZE} samples")
-print(f"Loaded {len(test_loader)} training batches with {len(test_loader) * BATCH_SIZE} samples")
+print(f"Loaded {len(train)} training batches with {len(train) * BATCH_SIZE} samples")
+print(f"Loaded {len(val)} val batches with {len(val) * BATCH_SIZE} samples")
+print(f"Loaded {len(test)} test batches with {len(test) * BATCH_SIZE} samples")
 
 # Can be useful if we're retraining many times on the entire dataset
 # completely memory extravagant but I have 256GB of RAM to use :)
-# train, valid = list(train), list(valid)
+# train, val = list(train), list(val)
 
 device = torch.device("cuda:0")
-is_validating = True
-is_testing = False
+do_val = True
+do_test = False
 
 history = {
     "train_samples": [],
     "train_acc": [],
-    "valid_acc": [],
+    "train_loss": [],
+    "val_acc": [],
     "test_acc": [],
-    "loss": [],
 }
 
-bbone = 'resnet50'
-m = Model(backbone=bbone)
+bbone = "resnet50"
+m = FireClassifier(backbone=bbone)
 m = m.to(device)
 
 criterion = torch.nn.BCELoss()
 
-for epoch in range(EPOCHS):  # epochs
+for epoch in range(EPOCHS):
 
     optimizer = torch.optim.Adam(
         m.parameters(), lr=1e-4 if epoch < 5 else 1e-5, weight_decay=1e-3
@@ -98,9 +75,9 @@ for epoch in range(EPOCHS):  # epochs
     running_acc = []
 
     # epoch training
-    m.train()
-    for i, data in enumerate(train_loader):
 
+    for i, data in enumerate(train):
+        m.train()
         # get the inputs; data is a list of [inputs, labels]
         inputs = data[0].to(device)
         labels = data[1].to(device)
@@ -121,28 +98,51 @@ for epoch in range(EPOCHS):  # epochs
         running_loss.append(loss.item())
         running_acc.append(acc)
 
-        if i % 20 == 0:
+        if i % PRINT_EVERY == 0:
             print(
                 f"epoch: {epoch+1:02d}, \
                 batch: {i:03d}, \
                 loss: {np.mean(running_loss):.3f}, \
                 training accuracy: {np.mean(running_acc):.3f}"
-                )
+            )
 
-            history["loss"].append(np.mean(running_loss))
-            history["train_samples"].append(epoch * len(train_loader) + i)
+            history["train_samples"].append(epoch * len(train) + i)
             history["train_acc"].append(np.mean(running_acc))
+            history["train_loss"].append(np.mean(running_loss))
 
         # del outputs, inputs, labels
+
+        if i % EVAL_EVERY == 0:
+            m.eval()
+            val_acc = []
+            # epoch val
+
+            for i, data in enumerate(val):
+
+                # get the inputs; data is a list of [inputs, labels]
+                inputs = data[0].to(device)
+                labels = data[1].to(device)
+
+                with torch.no_grad():
+                    scores = m(inputs).squeeze()
+                    pred = scores > 0.5
+                    acc = accuracy_gpu(pred, labels)
+
+                val_acc.append(acc)
+
+            va = round(np.mean(val_acc), 4)
+            print(f"val accuracy {va}")
+            history["val_acc"].append(va)
+
 
     #########################################
     # on epoch end:
     m.eval()
-    if is_validating:
-        valid_acc = []
-        # epoch validation
-        
-        for i, data in enumerate(valid_loader):
+    if do_val:
+        val_acc = []
+        # epoch val
+
+        for i, data in enumerate(val):
 
             # get the inputs; data is a list of [inputs, labels]
             inputs = data[0].to(device)
@@ -152,43 +152,46 @@ for epoch in range(EPOCHS):  # epochs
                 scores = m(inputs).squeeze()
                 pred = scores > 0.5
                 acc = accuracy_gpu(pred, labels)
-            
-            valid_acc.append(acc)
 
-        va = round(np.mean(valid_acc), 4)
-        print(f"validation accuracy {va}")
-        history["valid_acc"].append(va)
+            val_acc.append(acc)
+
+        va = round(np.mean(val_acc), 4)
+        print(f"val accuracy {va}")
+        history["val_acc"].append(va)
     else:
         va = -1
 
-    if is_testing:
+    if do_test:
         test_acc = []
-        # epoch validation
+        # epoch val
 
         with torch.no_grad():
-            for i, data in enumerate(test_loader):
+            for i, data in enumerate(test):
                 # data has list entries: [inputs, labels]
                 inputs = data[0].to(device)
                 labels = data[1].to(device)
-                
+
                 scores = m(inputs).squeeze()
                 pred = scores > 0.5
-                
+
                 acc = accuracy_gpu(pred, labels)
                 test_acc.append(acc)
-    
+
         tst = np.mean(test_acc)
         print(f"test_accuracy {tst}")
         history["test_acc"].append(tst)
     else:
         tst = -1
 
-    fname = f"weights/{bbone}-epoch-{epoch}-valid_acc={va:.2f}-test_acc={tst:.2f}.pt"
+    fname = f"weights/{bbone}-epoch-{epoch}-val_acc={va:.2f}-test_acc={tst:.2f}.pt"
     torch.save(m, fname)
     print(f"Saved {fname}")
 
-print(f"Finished Training: {bbone}")
+    with open("log.json", "w") as f:
+        s = json.dumps(history)
+        f.write(s)
 
+print(f"Finished Training: {bbone}")
 
 
 import matplotlib.pyplot as plt
@@ -200,8 +203,6 @@ plt.plot(history["train_samples"], history["loss"])
 plt.plot(history["train_samples"], history["train_acc"])
 
 
-plt.scatter(
-    np.array(history["train_samples"]) / len(train_loader), history["train_acc"]
-)
-plt.scatter(list(range(10)), history["valid_acc"])
-plt.scatter(list(range(10)), history["test_acc"])
+plt.scatter(np.array(history["train_samples"]) / len(train), history["train_acc"])
+plt.scatter(list(range(EPOCHS)), history["val_acc"])
+plt.scatter(list(range(EPOCHS)), history["test_acc"])

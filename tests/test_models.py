@@ -1,10 +1,10 @@
-
 import torch
 import unittest
 
 import sys
+
 sys.path.append('..')
-from firedetect.model import Model
+from models import FireClassifier
 
 class TestModels(unittest.TestCase):
 
@@ -12,10 +12,10 @@ class TestModels(unittest.TestCase):
         BACKBONES = ['resnet18','resnet34','resnet50','resnet101', 'densenet121']
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         for b in BACKBONES:
-            print(b)
-            model = Model(backbone=b)
+            print(f"Testing {b}...")
+            model = FireClassifier(backbone=b)
             model = model.to(device)
             self.assertTrue(model(torch.ones(1,3,224,224).to(device)))
-
+            
 if __name__ == '__main__':
     unittest.main()
