@@ -5,36 +5,27 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 
-
-class ConcatDataset(torch.utils.data.Dataset):
-    def __init__(self, *datasets):
-        self.datasets = datasets
-
-    def __getitem__(self, i):
-        return tuple(d[i] for d in self.datasets)
-
-    def __len__(self):
-        return min(len(d) for d in self.datasets)
+transform = torchvision.transforms.Compose(
+    [
+        torchvision.transforms.Resize((224, 224)),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(
+            mean=(0.4005, 0.3702, 0.3419), std=(0.2858, 0.2749, 0.2742)
+        ),
+    ]
+)
+\
 
 def make_combo_train_loaders(
-    directory="~/fire_aerial2k_dataset/",
+    directory,
     val_frac=0.1,
     batch_size=16,
     random_seed=4822,
     shuffle=True,
 ):
 
-    transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.Resize((224, 224)),
-            torchvision.transforms.Normalize(
-                mean=(0.4005, 0.3702, 0.3419), std=(0.2858, 0.2749, 0.2742)
-            ),
-            torchvision.transforms.ToTensor(),
-        ]
-    )
-
-    entire_dataset = torchvision.datasets.ImageFolder(root=directory, transform=tr)
+    entire_dataset = torchvision.datasets.ImageFolder(root=directory, transform=transform)
+    entire_dataset.class_to_idx = {'fire': 1, 'nofire': 0} # class mapping
 
     n_all = len(entire_dataset)
     n_valid = int(np.floor(val_frac * n_all))
