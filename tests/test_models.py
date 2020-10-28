@@ -4,12 +4,11 @@ import unittest
 import sys
 
 sys.path.append('..')
-from models import FireClassifier
+from models import FireClassifier, BACKBONES
 
 class TestModels(unittest.TestCase):
 
     def test_backbone_avail(self):
-        BACKBONES = ['resnet18','resnet34','resnet50','resnet101', 'densenet121']
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         for b in BACKBONES:
             print(f"Testing {b}...")
