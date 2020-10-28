@@ -6,15 +6,16 @@ import torchvision
 
 from datasets.afd import make_afd_loaders
 from datasets.dunnings import make_dunnings_test_loader, make_dunnings_train_loader
-from dataset.combo import make_combo_train_loaders
+from datasets.combo import make_combo_train_loaders
 
-from models import FireClassifier
+from models import FireClassifier, BACKBONES
 from utils import accuracy_gpu
 
 BATCH_SIZE = 32
-EPOCHS = 30
-PRINT_EVERY = 5  # batches
-EVAL_EVERY = 50
+EPOCHS = 8
+DECREASE_LR = 4
+PRINT_EVERY = 100  # batches
+EVAL_EVERY = 100
 
 BACKBONES = [
     "resnet18",
@@ -26,96 +27,130 @@ BACKBONES = [
 ]
 
 dataset_paths = {
-    "mine": "~/pro/fire_aerial2k_dataset/",
+    "afd_train": "/home/tomek/pro/aerial_fire_dataset/train",
+    # "afd_test": "home/tomek/pro/aerial_fire_dataset/test/",
     "dunnings_train": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/train",
-    "dunnings_test": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test",
-    "furg_test": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test_furg/",
-    "combo": "/home/tomek/pro/3datasets/",
+    # "dunnings_test": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test",
+    # HDD
+    # "combined_train": "/media/tomek/BIG2/datasets/FIRE/combined_dunnings_afd/train",
+    # "combined_test": "media/tomek/BIG2/datasets/FIRE/combined_dunnings_afd/test,
+    # SSD
+    "combined_train": "/home/tomek/pro/combined_dunnings_afd/train",
+    # "combined_test": "/home/tomek/pro/combined_dunnings_afd/test
 }
 
-train, val = make_combo_train_loaders(dataset_paths["combo"], batch_size=BATCH_SIZE)
+
+train, val = make_combo_train_loaders(
+    dataset_paths["combined_train"], batch_size=BATCH_SIZE
+)
 
 # dunnings_train = make_dunnings_train_loader(
 #     dataset_paths["dunnings_train"], batch_size=BATCH_SIZE
 # )
 
-test = make_dunnings_test_loader(dataset_paths["dunnings_test"], batch_size=BATCH_SIZE)
+# test = make_dunnings_test_loader(dataset_paths["dunnings_test"], batch_size=BATCH_SIZE)
 
 print(f"Loaded {len(train)} training batches with {len(train) * BATCH_SIZE} samples")
 print(f"Loaded {len(val)} val batches with {len(val) * BATCH_SIZE} samples")
-print(f"Loaded {len(test)} test batches with {len(test) * BATCH_SIZE} samples")
+# print(f"Loaded {len(test)} test batches with {len(test) * BATCH_SIZE} samples")
 
 # Can be useful if we're retraining many times on the entire dataset
 # completely memory extravagant but I have 256GB of RAM to use :)
 # train, val = list(train), list(val)
 
-device = torch.device("cuda:0")
-do_val = True
-do_test = False
+for bbone in BACKBONES:
 
-history = {
-    "train_samples": [],
-    "train_acc": [],
-    "train_loss": [],
-    "val_acc": [],
-    "test_acc": [],
-}
+    device = torch.device("cuda:0")
+    do_val = True
+    do_test = False
 
-bbone = "resnet50"
-m = FireClassifier(backbone=bbone)
-m = m.to(device)
+    history = {
+        "train_samples": [],
+        "train_acc": [],
+        "train_loss": [],
+        "val_acc": [],
+        "test_acc": [],
+    }
 
-criterion = torch.nn.BCELoss()
+    bbone = "resnet50"
+    m = FireClassifier(backbone=bbone)
+    m = m.to(device)
 
-for epoch in range(EPOCHS):
+    criterion = torch.nn.BCELoss()
 
-    optimizer = torch.optim.Adam(
-        m.parameters(), lr=1e-4 if epoch < 5 else 1e-5, weight_decay=1e-3
-    )
+    for epoch in range(EPOCHS):
 
-    running_loss = []
-    running_acc = []
+        optimizer = torch.optim.Adam(
+            m.parameters(), lr=1e-4 if epoch < 5 else 1e-5, weight_decay=1e-3
+        )
 
-    # epoch training
+        running_loss = []
+        running_acc = []
 
-    for i, data in enumerate(train):
-        m.train()
-        # get the inputs; data is a list of [inputs, labels]
-        inputs = data[0].to(device)
-        labels = data[1].to(device)
+        # epoch training
 
-        # zero the parameter gradients
-        optimizer.zero_grad()
+        for i, data in enumerate(train):
+            m.train()
+            # get the inputs; data is a list of [inputs, labels]
+            inputs = data[0].to(device)
+            labels = data[1].to(device)
 
-        # forward + backward + optimize
-        scores = m(inputs)
-        loss = criterion(scores[:, 0], labels.type_as(scores[:, 0]))
-        loss.backward()
-        optimizer.step()
+            # zero the parameter gradients
+            optimizer.zero_grad()
 
-        pred = (scores >= 0.5).squeeze()
-        acc = accuracy_gpu(pred, labels)
-        # print statistics
+            # forward + backward + optimize
+            scores = m(inputs)
+            loss = criterion(scores[:, 0], labels.type_as(scores[:, 0]))
+            loss.backward()
+            optimizer.step()
 
-        running_loss.append(loss.item())
-        running_acc.append(acc)
+            pred = (scores >= 0.5).squeeze()
+            acc = accuracy_gpu(pred, labels)
+            # print statistics
 
-        if i % PRINT_EVERY == 0:
-            print(
-                f"epoch: {epoch+1:02d}, \
-                batch: {i:03d}, \
-                loss: {np.mean(running_loss):.3f}, \
-                training accuracy: {np.mean(running_acc):.3f}"
-            )
+            running_loss.append(loss.item())
+            running_acc.append(acc)
 
-            history["train_samples"].append(epoch * len(train) + i)
-            history["train_acc"].append(np.mean(running_acc))
-            history["train_loss"].append(np.mean(running_loss))
+            if i % PRINT_EVERY == 0:
+                print(
+                    f"epoch: {epoch+1:02d}, \
+                    batch: {i:03d}, \
+                    loss: {np.mean(running_loss):.3f}, \
+                    training accuracy: {np.mean(running_acc):.3f}"
+                )
 
-        # del outputs, inputs, labels
+                history["train_samples"].append(epoch * len(train) + i)
+                history["train_acc"].append(np.mean(running_acc))
+                history["train_loss"].append(np.mean(running_loss))
 
-        if i % EVAL_EVERY == 0:
-            m.eval()
+            # del outputs, inputs, labels
+
+            if i % EVAL_EVERY == 0:
+                m.eval()
+                val_acc = []
+                # epoch val
+
+                for i, data in enumerate(val):
+
+                    # get the inputs; data is a list of [inputs, labels]
+                    inputs = data[0].to(device)
+                    labels = data[1].to(device)
+
+                    with torch.no_grad():
+                        scores = m(inputs).squeeze()
+                        pred = scores > 0.5
+                        acc = accuracy_gpu(pred, labels)
+
+                    val_acc.append(acc)
+
+                va = round(np.mean(val_acc), 4)
+                print(f"val accuracy {va}")
+                history["val_acc"].append(va)
+
+        #########################################
+        # on epoch end:
+        m.eval()
+        if do_val:
             val_acc = []
             # epoch val
 
@@ -135,76 +170,39 @@ for epoch in range(EPOCHS):
             va = round(np.mean(val_acc), 4)
             print(f"val accuracy {va}")
             history["val_acc"].append(va)
+        else:
+            va = -1
 
-
-    #########################################
-    # on epoch end:
-    m.eval()
-    if do_val:
-        val_acc = []
-        # epoch val
-
-        for i, data in enumerate(val):
-
-            # get the inputs; data is a list of [inputs, labels]
-            inputs = data[0].to(device)
-            labels = data[1].to(device)
+        if do_test:
+            test_acc = []
+            # epoch val
 
             with torch.no_grad():
-                scores = m(inputs).squeeze()
-                pred = scores > 0.5
-                acc = accuracy_gpu(pred, labels)
+                for i, data in enumerate(test):
+                    # data has list entries: [inputs, labels]
+                    inputs = data[0].to(device)
+                    labels = data[1].to(device)
 
-            val_acc.append(acc)
+                    scores = m(inputs).squeeze()
+                    pred = scores > 0.5
 
-        va = round(np.mean(val_acc), 4)
-        print(f"val accuracy {va}")
-        history["val_acc"].append(va)
-    else:
-        va = -1
+                    acc = accuracy_gpu(pred, labels)
+                    test_acc.append(acc)
 
-    if do_test:
-        test_acc = []
-        # epoch val
+            tst = np.mean(test_acc)
+            print(f"test_accuracy {tst}")
+            history["test_acc"].append(tst)
+        else:
+            tst = -1
 
-        with torch.no_grad():
-            for i, data in enumerate(test):
-                # data has list entries: [inputs, labels]
-                inputs = data[0].to(device)
-                labels = data[1].to(device)
+        fname = (
+            f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.2f}-test_acc={tst:.2f}.pt"
+        )
+        torch.save(m, fname)
+        print(f"Saved {fname}")
 
-                scores = m(inputs).squeeze()
-                pred = scores > 0.5
+        with open("log.json", "w") as f:
+            s = json.dumps(history)
+            f.write(s)
 
-                acc = accuracy_gpu(pred, labels)
-                test_acc.append(acc)
-
-        tst = np.mean(test_acc)
-        print(f"test_accuracy {tst}")
-        history["test_acc"].append(tst)
-    else:
-        tst = -1
-
-    fname = f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.2f}-test_acc={tst:.2f}.pt"
-    torch.save(m, fname)
-    print(f"Saved {fname}")
-
-    with open("log.json", "w") as f:
-        s = json.dumps(history)
-        f.write(s)
-
-print(f"Finished Training: {bbone}")
-
-
-import matplotlib.pyplot as plt
-
-# for history in histories:
-plt.figure()
-plt.plot(history["train_samples"], history["loss"])
-
-plt.plot(history["train_samples"], history["train_acc"])
-
-
-plt.scatter(np.array(history["train_samples"]) / len(train), history["train_acc"])
-plt.scatter(list(range(EPOCHS)), history["val_acc"])
-plt.scatter(list(range(EPOCHS)), history["test_acc"])
+    print(f"Finished Training: {bbone}")
