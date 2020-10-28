@@ -9,7 +9,7 @@ import time
 def average(l):
     return sum(l)/len(l)
 
-weight_path = 'weights/resnet50-epoch-15-valid_acc=-1-test_acc=0.9856.pt'
+weight_path = 'weights/resnet50-epoch-29-val_acc=0.99-test_acc=-1.00.pt'
 
 dataset_paths = {'mine': '/home/013855803/fire_aerial2k_dataset/',
                  'dunnings': '/home/013855803/fire-dataset-dunnings/images-224x224/train',
