@@ -24,8 +24,14 @@ def make_combo_train_loaders(
     shuffle=True,
 ):
 
-    tr = torchvision.transforms.Compose(
-        [torchvision.transforms.Resize((224, 224)), torchvision.transforms.ToTensor()]
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.Resize((224, 224)),
+            torchvision.transforms.Normalize(
+                mean=(0.4005, 0.3702, 0.3419), std=(0.2858, 0.2749, 0.2742)
+            ),
+            torchvision.transforms.ToTensor(),
+        ]
     )
 
     entire_dataset = torchvision.datasets.ImageFolder(root=directory, transform=tr)

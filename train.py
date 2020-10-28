@@ -6,6 +6,8 @@ import torchvision
 
 from datasets.afd import make_afd_loaders
 from datasets.dunnings import make_dunnings_test_loader, make_dunnings_train_loader
+from dataset.combo import make_combo_train_loaders
+
 from models import FireClassifier
 from utils import accuracy_gpu
 
@@ -31,7 +33,7 @@ dataset_paths = {
     "combo": "/home/tomek/pro/3datasets/",
 }
 
-train, val = make_afd_loaders(dataset_paths["combo"], batch_size=BATCH_SIZE)
+train, val = make_combo_train_loaders(dataset_paths["combo"], batch_size=BATCH_SIZE)
 
 # dunnings_train = make_dunnings_train_loader(
 #     dataset_paths["dunnings_train"], batch_size=BATCH_SIZE
@@ -183,7 +185,7 @@ for epoch in range(EPOCHS):
     else:
         tst = -1
 
-    fname = f"weights/{bbone}-epoch-{epoch}-val_acc={va:.2f}-test_acc={tst:.2f}.pt"
+    fname = f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.2f}-test_acc={tst:.2f}.pt"
     torch.save(m, fname)
     print(f"Saved {fname}")
 
