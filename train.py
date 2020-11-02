@@ -12,19 +12,10 @@ from models import FireClassifier, BACKBONES
 from utils import accuracy_gpu
 
 BATCH_SIZE = 32
-EPOCHS = 8
-DECREASE_LR = 4
+EPOCHS = 10
+DECREASE_LR_AFTER = 3
 PRINT_EVERY = 100  # batches
 EVAL_EVERY = 100
-
-BACKBONES = [
-    "resnet18",
-    "resnet34",
-    "resnet50",
-    "resnet101",
-    "densenet121",
-    "mobilenet",
-]
 
 dataset_paths = {
     "afd_train": "/home/tomek/pro/aerial_fire_dataset/train",
@@ -40,25 +31,33 @@ dataset_paths = {
 }
 
 
-train, val = make_combo_train_loaders(
-    dataset_paths["combined_train"], batch_size=BATCH_SIZE
-)
-
 # dunnings_train = make_dunnings_train_loader(
 #     dataset_paths["dunnings_train"], batch_size=BATCH_SIZE
 # )
 
 # test = make_dunnings_test_loader(dataset_paths["dunnings_test"], batch_size=BATCH_SIZE)
 
-print(f"Loaded {len(train)} training batches with {len(train) * BATCH_SIZE} samples")
-print(f"Loaded {len(val)} val batches with {len(val) * BATCH_SIZE} samples")
+
+
 # print(f"Loaded {len(test)} test batches with {len(test) * BATCH_SIZE} samples")
 
 # Can be useful if we're retraining many times on the entire dataset
 # completely memory extravagant but I have 256GB of RAM to use :)
 # train, val = list(train), list(val)
 
+BACKBONES = ['VGG16']
+
 for bbone in BACKBONES:
+
+    BATCH_SIZE = 16 if bbone == 'VGG16' else 32
+    train, val = make_combo_train_loaders(
+        dataset_paths["combined_train"], batch_size=BATCH_SIZE
+    )
+
+    print(f"Loaded {len(train)} training batches with {len(train) * BATCH_SIZE} samples")
+    print(f"Loaded {len(val)} val batches with {len(val) * BATCH_SIZE} samples")
+
+    print(f"Training {bbone}")
 
     device = torch.device("cuda:0")
     do_val = True
@@ -72,7 +71,7 @@ for bbone in BACKBONES:
         "test_acc": [],
     }
 
-    bbone = "resnet50"
+    # bbone = "resnet50"
     m = FireClassifier(backbone=bbone)
     m = m.to(device)
 
@@ -81,7 +80,9 @@ for bbone in BACKBONES:
     for epoch in range(EPOCHS):
 
         optimizer = torch.optim.Adam(
-            m.parameters(), lr=1e-4 if epoch < 5 else 1e-5, weight_decay=1e-3
+            m.parameters(),
+            lr=1e-4 if epoch < DECREASE_LR_AFTER else 1e-5,
+            weight_decay=1e-3
         )
 
         running_loss = []
@@ -196,7 +197,7 @@ for bbone in BACKBONES:
             tst = -1
 
         fname = (
-            f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.2f}-test_acc={tst:.2f}.pt"
+            f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.4f}-test_acc={tst:.2f}.pt"
         )
         torch.save(m, fname)
         print(f"Saved {fname}")
