@@ -1,6 +1,8 @@
 import torch
 import torchvision
 
+from datasets.combo import transform
+
 from PIL import Image
 import requests
 from io import BytesIO
@@ -10,15 +12,11 @@ response = requests.get(url)
 img = Image.open(BytesIO(response.content))
 
 device = "cuda:0"
-m = torch.load('../weights/resnet50-epoch-8-valid_acc=0.97-test_acc=-1.00.pt')
+m = torch.load('weights/densenet121-epoch-1-val_acc=0.9897-test_acc=-1.00.pt')
 m = m.to(device)
 m.eval()
 
-tr = torchvision.transforms.Compose(
-    [torchvision.transforms.Resize((224, 224)), torchvision.transforms.ToTensor()]
-)
-
-tensor_in = tr(img).to(device)
+tensor_in = transform(img).to(device)
 batch_in = torch.unsqueeze(tensor_in, dim=0)
 batch_out = m(batch_in)
 print(f"Fire score: {float(batch_out[0])}")
