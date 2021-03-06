@@ -1,3 +1,4 @@
+import os
 import json
 
 import numpy as np
@@ -17,25 +18,30 @@ DECREASE_LR_AFTER = 3
 PRINT_EVERY = 100  # batches
 EVAL_EVERY = 100
 
-dataset_paths = {
-    "afd_train": "/home/tomek/pro/aerial_fire_dataset/train",
-    # "afd_test": "home/tomek/pro/aerial_fire_dataset/test/",
-    "dunnings_train": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/train",
-    # "dunnings_test": "/media/tomek/BIG2/datasets/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test",
-    # HDD
-    # "combined_train": "/media/tomek/BIG2/datasets/FIRE/combined_dunnings_afd/train",
-    # "combined_test": "media/tomek/BIG2/datasets/FIRE/combined_dunnings_afd/test,
-    # SSD
-    "combined_train": "/home/tomek/pro/combined_dunnings_afd/train",
-    # "combined_test": "/home/tomek/pro/combined_dunnings_afd/test
+# Datasets are in data/ folder by default
+file_path = os.path.realpath(__file__)
+DATASETS_ROOT = os.path.dirname(file_path) + "/data"
+
+DATASETS = {
+    # AFD only
+    "afd_train": DATASETS_ROOT + "/aerial_fire_dataset/train",
+    "afd_test": DATASETS_ROOT + "/aerial_fire_dataset/test/",
+
+    # Dunnings only
+    "dunnings_train": DATASETS_ROOT + "/dunnings/fire-dataset-dunnings/images-224x224/train",
+    "dunnings_test": DATASETS_ROOT + "/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test",
+
+    # AFD + Dunnings
+    "combined_train": DATASETS_ROOT + "/combined_dunnings_afd/train",
+    "combined_test": DATASETS_ROOT + "/combined_dunnings_afd/test"
 }
 
 
 # dunnings_train = make_dunnings_train_loader(
-#     dataset_paths["dunnings_train"], batch_size=BATCH_SIZE
+#     DATASETS["dunnings_train"], batch_size=BATCH_SIZE
 # )
 
-# test = make_dunnings_test_loader(dataset_paths["dunnings_test"], batch_size=BATCH_SIZE)
+# test = make_dunnings_test_loader(DATASETS["dunnings_test"], batch_size=BATCH_SIZE)
 
 
 
@@ -51,7 +57,7 @@ for bbone in BACKBONES:
 
     BATCH_SIZE = 16 if bbone == 'VGG16' else 32
     train, val = make_combo_train_loaders(
-        dataset_paths["combined_train"], batch_size=BATCH_SIZE
+        DATASETS["combined_train"], batch_size=BATCH_SIZE
     )
 
     print(f"Loaded {len(train)} training batches with {len(train) * BATCH_SIZE} samples")
