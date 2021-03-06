@@ -51,8 +51,6 @@ DATASETS = {
 # completely memory extravagant but I have 256GB of RAM to use :)
 # train, val = list(train), list(val)
 
-BACKBONES = ['VGG16']
-
 for bbone in BACKBONES:
 
     BATCH_SIZE = 16 if bbone == 'VGG16' else 32
