@@ -99,10 +99,10 @@ for epoch in range(EPOCHS):
 
         if i % PRINT_EVERY == 0:
             print(
-                f"epoch: {epoch+1:02d}, \
-                batch: {i:03d}, \
-                loss: {np.mean(running_loss):.3f}, \
-                training accuracy: {np.mean(running_acc):.3f}"
+                f"epoch: {epoch+1:03d} "
+                f"batch: {i:05d} "
+                f"loss: {np.mean(running_loss):.3f} "
+                f"training accuracy: {np.mean(running_acc):.3f} "
             )
 
             history["train_samples"].append(epoch * len(train) + i)
