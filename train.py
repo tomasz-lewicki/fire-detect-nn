@@ -12,7 +12,7 @@ from datasets.combo import make_combo_train_loaders
 from models import FireClassifier, BACKBONES
 from utils import accuracy_gpu
 
-bbone = 'densenet121'
+bbone = "densenet121"
 assert bbone in BACKBONES
 
 EPOCHS = 10
@@ -30,19 +30,15 @@ DATASETS = {
     # AFD only
     "afd_train": DATASETS_ROOT + "/aerial_fire_dataset/train",
     "afd_test": DATASETS_ROOT + "/aerial_fire_dataset/test/",
-
     # Dunnings only
-    "dunnings_train": DATASETS_ROOT + "/dunnings/fire-dataset-dunnings/images-224x224/train",
-    "dunnings_test": DATASETS_ROOT + "/FIRE/dunnings/fire-dataset-dunnings/images-224x224/test",
-
+    "dunnings_train": DATASETS_ROOT + "/dunnings_dataset/images-224x224/train",
+    "dunnings_test": DATASETS_ROOT + "/dunnings_dataset/images-224x224/test",
     # AFD + Dunnings
-    "combined_train": DATASETS_ROOT + "/combined_dunnings_afd/train",
-    "combined_test": DATASETS_ROOT + "/combined_dunnings_afd/test"
+    "combined_train": DATASETS_ROOT + "/dunnings_afd_combo/train",
+    "combined_test": DATASETS_ROOT + "/dunnings_afd_combo/test",
 }
 
-train, val = make_combo_train_loaders(
-    DATASETS["combined_train"], batch_size=BATCH_SIZE
-)
+train, val = make_combo_train_loaders(DATASETS["combined_train"], batch_size=BATCH_SIZE)
 
 print(f"Loaded {len(train)} training batches with {len(train) * BATCH_SIZE} samples")
 print(f"Loaded {len(val)} val batches with {len(val) * BATCH_SIZE} samples")
@@ -71,7 +67,7 @@ for epoch in range(EPOCHS):
     optimizer = torch.optim.Adam(
         m.parameters(),
         lr=1e-4 if epoch < DECREASE_LR_AFTER else 1e-5,
-        weight_decay=1e-3
+        weight_decay=1e-3,
     )
 
     running_loss = []
@@ -137,8 +133,8 @@ for epoch in range(EPOCHS):
             print(f"val accuracy {va}")
             history["val_acc"].append(va)
 
-    #########################################
-    # on epoch end:
+    ############################ validation ####################################
+
     m.eval()
     if do_val:
         val_acc = []
@@ -163,6 +159,8 @@ for epoch in range(EPOCHS):
     else:
         va = -1
 
+    ############################### testing ####################################
+
     if do_test:
         test_acc = []
         # epoch val
@@ -185,9 +183,7 @@ for epoch in range(EPOCHS):
     else:
         tst = -1
 
-    fname = (
-        f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.4f}-test_acc={tst:.2f}.pt"
-    )
+    fname = f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.4f}-test_acc={tst:.2f}.pt"
     torch.save(m, fname)
     print(f"Saved {fname}")
 
@@ -195,4 +191,4 @@ for epoch in range(EPOCHS):
         s = json.dumps(history)
         f.write(s)
 
-print(f"Finished Training: {bbone}")
+print(f"Finished Training {bbone} model")
