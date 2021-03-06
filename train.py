@@ -12,10 +12,14 @@ from datasets.combo import make_combo_train_loaders
 from models import FireClassifier, BACKBONES
 from utils import accuracy_gpu
 
-BATCH_SIZE = 32
+bbone = 'densenet121'
+assert bbone in BACKBONES
+
 EPOCHS = 10
+BATCH_SIZE = 32
 DECREASE_LR_AFTER = 3
-PRINT_EVERY = 100  # batches
+
+PRINT_EVERY = 100  # (batches)
 EVAL_EVERY = 100
 
 # Datasets are in data/ folder by default
@@ -57,7 +61,6 @@ history = {
     "test_acc": [],
 }
 
-# bbone = "resnet50"
 m = FireClassifier(backbone=bbone)
 m = m.to(device)
 
