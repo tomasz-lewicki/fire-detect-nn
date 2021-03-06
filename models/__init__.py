@@ -2,16 +2,6 @@ import torch
 import torchvision
 import torchvision.models as models
 
-transform = torchvision.transforms.Compose(
-    [
-        torchvision.transforms.Resize((224, 224)),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(
-            mean=(0.4005, 0.3702, 0.3419), std=(0.2858, 0.2749, 0.2742)
-        ),
-    ]
-)
-
 BACKBONES = [
     "resnet50",
     "densenet121",
