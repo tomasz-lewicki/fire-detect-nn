@@ -2,43 +2,24 @@
 
 ![fire](docs/fire.gif)
 
-
-# Training 
+## Quickstart
 ```bash
-python3 train.py
+git clone git@github.com:tomek-l/fire-detect-nn.git
+wget https://dl.dropbox.com/s/6t17srif65vzqfn/firedetect-densenet121-pretrained.pt --directory-prefix=weights/
+pip3 install -r requirements.txt
+python3 inference.py # inference
+```
+
+```bash
+python3 train.py # training 
 python3 train-with-gradcam.py # for final model with gradcam
+python3 inference.py # evaluation
+# For the GradCAM heatmap generation use jupyter notebook and navigate to inference-video.ipynb
 ```
 
-# Evaluation
-```bash
-python3 inference.py
-```
-
-# Inference
-
-Basic inference:
-```bash
-python3 inference.py
-```
-
-Inference on a video:
-```bash
-jupyter notebook
-```
-navigate to inference-video.ipynb
-
-# Unit Tests
+## Unit Tests
+(Well, kind of...)
 ```bash
 cd test
 python3 test_models.py
 ```
-
-
-# FAQ
-
-If training on a custom dataset, make sure to set appropriate class to label matching.
-For example, if dataset folders are called: `fire` and `nofire` do:s
-```
-dataset.class_to_idx = {'fire': 1, 'nofire': 0} # class mapping
-```
-Otherwise pytorch will match classes to labels alphabetically and the result may be reversed!
