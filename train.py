@@ -19,7 +19,7 @@ EPOCHS = 10
 BATCH_SIZE = 32
 DECREASE_LR_AFTER = 3
 
-PRINT_EVERY = 100  # (batches)
+PRINT_EVERY = 10  # (batches)
 EVAL_EVERY = 100
 
 # Datasets are in data/ folder by default
