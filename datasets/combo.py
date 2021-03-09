@@ -5,16 +5,19 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 
+# Dataset parameters
+IMG_SHAPE = (224, 224)
+RGB_MEAN = (0.4005, 0.3702, 0.3419)
+RGB_STD = (0.2858, 0.2749, 0.2742)
+
+# Example transform
 transform = torchvision.transforms.Compose(
     [
-        torchvision.transforms.Resize((224, 224)),
+        torchvision.transforms.Resize(IMG_SHAPE),
         torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(
-            mean=(0.4005, 0.3702, 0.3419), std=(0.2858, 0.2749, 0.2742)
-        ),
+        torchvision.transforms.Normalize(mean=RGB_MEAN, std=RGB_STD),
     ]
 )
-\
 
 def make_combo_train_loaders(
     directory,
@@ -24,8 +27,12 @@ def make_combo_train_loaders(
     shuffle=True,
 ):
 
-    entire_dataset = torchvision.datasets.ImageFolder(root=directory, transform=transform)
-    entire_dataset.class_to_idx = {'fire': 1, 'nofire': 0} # class mapping
+    entire_dataset = torchvision.datasets.ImageFolder(
+        root=directory,
+        transform=transform,
+        # What's the right way to use this???
+        # class_to_idx = {'fire': 1, 'nofire': 0} # class mapping
+    )
 
     n_all = len(entire_dataset)
     n_valid = int(np.floor(val_frac * n_all))
