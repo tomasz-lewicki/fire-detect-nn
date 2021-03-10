@@ -29,9 +29,9 @@ python3 test.py # evaluation
 ```
 For the GradCAM heatmap generation use jupyter notebook and navigate to `inference-video.ipynb`
 
-## Unit Tests
+<!-- ## Unit Tests
 (Well, kind of...)
 ```bash
 cd test
 python3 test_models.py
-```
+``` -->
