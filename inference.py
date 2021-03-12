@@ -5,6 +5,7 @@ import torch
 import torchvision
 from PIL import Image
 
+from models import FireClassifier
 from datasets.combo import transform
 
 
@@ -17,9 +18,11 @@ def img_from_url(url):
 if __name__ == "__main__":
 
     device = "cuda:0"
-    m = torch.load("weights/firedetect-densenet121-pretrained.pt")
-    m = m.to(device)
-    m.eval()
+    net = FireClassifier(backbone='densenet121', pretrained=False)
+    state_dict = torch.load("weights/densenet121-epoch-9-val_acc=0.9929-test_acc=-1.00.pt")
+    net.load_state_dict(state_dict)
+    net = net.to(device)
+    net.eval()
 
     # Load an out-of-sample image from the internets
     img = img_from_url(
@@ -34,5 +37,5 @@ if __name__ == "__main__":
 
     tensor_in = transform(img).to(device)
     batch_in = torch.unsqueeze(tensor_in, dim=0)
-    batch_out = m(batch_in)
+    batch_out = net(batch_in)
     print(f"Fire score: {float(batch_out[0])}")
