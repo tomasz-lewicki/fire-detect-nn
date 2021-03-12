@@ -184,7 +184,7 @@ for epoch in range(EPOCHS):
         tst = -1
 
     fname = f"weights/{bbone}-epoch-{epoch+1}-val_acc={va:.4f}-test_acc={tst:.2f}.pt"
-    torch.save(m, fname)
+    torch.save(m.state_dict(), fname)
     print(f"Saved {fname}")
 
     with open("log.json", "w") as f:
