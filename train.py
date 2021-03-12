@@ -28,14 +28,14 @@ DATASETS_ROOT = os.path.dirname(file_path) + "/data"
 
 DATASETS = {
     # AFD only
-    "afd_train": DATASETS_ROOT + "/aerial_fire_dataset/train",
-    "afd_test": DATASETS_ROOT + "/aerial_fire_dataset/test/",
+    "afd_train": DATASETS_ROOT + "/aerial-fire-dataset/train",
+    "afd_test": DATASETS_ROOT + "/aerial-fire-dataset/test/",
     # Dunnings only
-    "dunnings_train": DATASETS_ROOT + "/dunnings_dataset/images-224x224/train",
-    "dunnings_test": DATASETS_ROOT + "/dunnings_dataset/images-224x224/test",
+    "dunnings_train": DATASETS_ROOT + "/dunnings-dataset/images-224x224/train",
+    "dunnings_test": DATASETS_ROOT + "/dunnings-dataset/images-224x224/test",
     # AFD + Dunnings
-    "combined_train": DATASETS_ROOT + "/dunnings_afd_combo/train",
-    "combined_test": DATASETS_ROOT + "/dunnings_afd_combo/test",
+    "combined_train": DATASETS_ROOT + "/fire-detect-nn-public-combo-dataset/train",
+    "combined_test": DATASETS_ROOT + "/fire-detect-nn-public-combo-dataset/test",
 }
 
 train, val = make_combo_train_loaders(DATASETS["combined_train"], batch_size=BATCH_SIZE)
